@@ -1,0 +1,252 @@
+-- Main/AllInOneVisuals.lua
+-- 整合版：所有功能在一个UI菜单里
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local localPlayer = Players.LocalPlayer
+local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+local torso = character:WaitForChild("UpperTorso") or character:WaitForChild("Torso")
+
+----------------------------------------------------
+-- 1. 创建统一的UI界面
+----------------------------------------------------
+-- 防止重复打开菜单
+if localPlayer:WaitForChild("PlayerGui"):FindFirstChild("AllInOneVisuals") then
+    localPlayer.PlayerGui.AllInOneVisuals:Destroy()
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "AllInOneVisuals"
+gui.Parent = localPlayer:WaitForChild("PlayerGui")
+
+-- 主面板
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 220, 0, 360)
+mainFrame.Position = UDim2.new(0, 20, 0.5, -180)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.BackgroundTransparency = 0.2
+mainFrame.BorderSizePixel = 2
+mainFrame.BorderColor3 = Color3.fromRGB(100, 100, 200)
+mainFrame.Parent = gui
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundTransparency = 1
+title.Text = "✨ 角色美化菜单"
+title.TextColor3 = Color3.fromRGB(200, 200, 255)
+title.TextSize = 20
+title.Font = Enum.Font.GothamBold
+title.Parent = mainFrame
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 8)
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+layout.Parent = mainFrame
+
+-- 通用按钮生成函数
+local function createButton(text, yPosition, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 16
+    btn.Font = Enum.Font.Gotham
+    btn.Parent = mainFrame
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+----------------------------------------------------
+-- 2. 各功能的变量和状态
+----------------------------------------------------
+local cape = nil
+local currentWings = nil
+local currentTail = nil
+
+-- 清理旧部件
+local function removeOld(part)
+    if part and part.Parent then
+        part:Destroy()
+    end
+end
+
+----------------------------------------------------
+-- 3. 功能实现
+----------------------------------------------------
+
+-- 功能A：披风 (循环切换3种图案)
+local capeImages = {
+    "rbxassetid://123456789", -- 替换为你自己的图片ID
+    "rbxassetid://987654321", 
+    "rbxassetid://555555555" 
+}
+local capeIndex = 1
+
+local function toggleCape()
+    if cape then
+        removeOld(cape)
+        cape = nil
+        return
+    end
+    cape = Instance.new("Part")
+    cape.Name = "MyCape"
+    cape.Size = Vector3.new(2, 3, 0.2)
+    cape.Anchored = false
+    cape.CanCollide = false
+    cape.Massless = true
+    cape.Color = Color3.fromRGB(255, 255, 255)
+    cape.Material = Enum.Material.SmoothPlastic
+    
+    local texture = Instance.new("Texture")
+    texture.Face = Enum.NormalId.Back
+    texture.Texture = capeImages[capeIndex]
+    texture.Parent = cape
+    
+    local weld = Instance.new("Weld")
+    weld.Part0 = torso
+    weld.Part1 = cape
+    weld.C0 = CFrame.new(0, 0, 0.6)
+    weld.C1 = CFrame.new(0, 1.5, 0)
+    weld.Parent = cape
+    cape.Parent = character
+end
+
+-- 功能B：翅膀 (循环切换不同风格)
+local wingStyles = {"天使翅膀", "龙翅膀", "恶魔翅膀"}
+local wingIndex = 1
+
+local function createWings(style)
+    removeOld(currentWings)
+    currentWings = Instance.new("Model")
+    currentWings.Name = "Wings"
+    currentWings.Parent = character
+    
+    local color = Color3.fromRGB(255, 255, 255)
+    if style == "龙翅膀" then color = Color3.fromRGB(100, 50, 50) end
+    if style == "恶魔翅膀" then color = Color3.fromRGB(50, 50, 50) end
+
+    for side = -1, 1, 2 do -- 左右两侧
+        local wingPart = Instance.new("Part")
+        wingPart.Size = Vector3.new(2, 3, 0.2)
+        wingPart.Anchored = false
+        wingPart.CanCollide = false
+        wingPart.Massless = true
+        wingPart.Color = color
+        wingPart.Material = Enum.Material.SmoothPlastic
+        wingPart.Parent = currentWings
+        
+        local weld = Instance.new("Weld")
+        weld.Part0 = torso
+        weld.Part1 = wingPart
+        weld.C0 = CFrame.new(side * 1.2, 0.5, 0.4) * CFrame.Angles(0, 0, side * math.rad(20))
+        weld.Parent = wingPart
+    end
+end
+
+-- 功能C：尾巴 (循环切换猫尾巴/狐狸尾巴)
+local tailStyles = {"猫尾巴", "狐狸尾巴"}
+local tailIndex = 1
+
+local function createTail(style)
+    removeOld(currentTail)
+    currentTail = Instance.new("Model")
+    currentTail.Name = "Tail"
+    currentTail.Parent = character
+    
+    local segments = (style == "狐狸尾巴") and 5 or 3
+    local color = (style == "狐狸尾巴") and Color3.fromRGB(255, 165, 0) or Color3.fromRGB(100, 100, 100)
+    
+    local lastPart = torso
+    for i = 1, segments do
+        local seg = Instance.new("Part")
+        seg.Shape = Enum.PartType.Ball
+        seg.Size = Vector3.new(0.6, 0.6, 0.6) * (1 - (i-1)*0.15)
+        seg.Anchored = false
+        seg.CanCollide = false
+        seg.Massless = true
+        seg.Color = color
+        seg.Material = Enum.Material.SmoothPlastic
+        seg.Parent = currentTail
+        
+        local weld = Instance.new("Weld")
+        weld.Part0 = lastPart
+        weld.Part1 = seg
+        if i == 1 then
+            weld.C0 = CFrame.new(0, -0.5, 0.8) -- 连接躯干
+        else
+            weld.C0 = CFrame.new(0, 0, -0.6) -- 连接上一节
+        end
+        weld.Parent = seg
+        lastPart = seg
+    end
+end
+
+-- 功能D：天空盒 (循环切换)
+local skyIndex = 1
+local skyPresets = {
+    {name = "默认天空", bk = "rbxassetid://169210090", dn = "rbxassetid://169210108", ft = "rbxassetid://169210121", lt = "rbxassetid://169210133", rt = "rbxassetid://169210143", up = "rbxassetid://169210149"},
+    {name = "繁星夜空", bk = "rbxassetid://159454299", dn = "rbxassetid://159454296", ft = "rbxassetid://159454293", lt = "rbxassetid://159454286", rt = "rbxassetid://159454300", up = "rbxassetid://159454288"}
+}
+
+local function changeSky()
+    local oldSky = Lighting:FindFirstChildOfClass("Sky")
+    if oldSky then oldSky:Destroy() end
+    
+    skyIndex = skyIndex + 1
+    if skyIndex > #skyPresets then skyIndex = 1 end
+    
+    local sky = Instance.new("Sky")
+    local preset = skyPresets[skyIndex]
+    sky.SkyboxBk = preset.bk
+    sky.SkyboxDn = preset.dn
+    sky.SkyboxFt = preset.ft
+    sky.SkyboxLf = preset.lt
+    sky.SkyboxRt = preset.rt
+    sky.SkyboxUp = preset.up
+    sky.Parent = Lighting
+    title.Text = "✨ 当前天空: " .. preset.name
+end
+
+-- 功能E：光源颜色 (调色板简版：循环切换预设色)
+local lightColors = {
+    {name = "默认", color = Color3.fromRGB(127, 127, 127)},
+    {name = "暖色调", color = Color3.fromRGB(255, 200, 150)},
+    {name = "冷色调", color = Color3.fromRGB(150, 200, 255)},
+    {name = "赛博朋克", color = Color3.fromRGB(255, 50, 150)},
+    {name = "森林绿", color = Color3.fromRGB(150, 255, 150)}
+}
+local lightIndex = 1
+
+local function changeLight()
+    lightIndex = lightIndex + 1
+    if lightIndex > #lightColors then lightIndex = 1 end
+    local c = lightColors[lightIndex].color
+    Lighting.Ambient = c
+    Lighting.OutdoorAmbient = c
+    title.Text = "✨ 当前光源: " .. lightColors[lightIndex].name
+end
+
+----------------------------------------------------
+-- 4. 生成按钮绑定UI
+----------------------------------------------------
+createButton("👕 切换披风图案", 50, toggleCape)
+createButton("🦋 切换翅膀风格", 98, function()
+    wingIndex = wingIndex + 1
+    if wingIndex > #wingStyles then wingIndex = 1 end
+    createWings(wingStyles[wingIndex])
+    title.Text = "✨ 当前翅膀: " .. wingStyles[wingIndex]
+end)
+createButton("🦊 切换尾巴风格", 146, function()
+    tailIndex = tailIndex + 1
+    if tailIndex > #tailStyles then tailIndex = 1 end
+    createTail(tailStyles[tailIndex])
+    title.Text = "✨ 当前尾巴: " .. tailStyles[tailIndex]
+end)
+createButton("🌌 切换天空盒", 194, changeSky)
+createButton("🎨 切换光源颜色", 242, changeLight)
+createButton("❌ 关闭菜单", 290, function() gui:Destroy() end)
+
+-- 初始化默认状态
+createWings(wingStyles[1])
+createTail(tailStyles[1])
